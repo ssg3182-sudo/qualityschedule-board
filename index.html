@@ -70,6 +70,20 @@
   .toolbar button:hover{ background:rgba(255,255,255,0.16); }
   .toolbar button.primary{ background:#E8A33D; border-color:#E8A33D; color:#3A2504; font-weight:600; }
   .toolbar button.primary:hover{ background:#f0b25c; }
+  .month-nav{
+    display:flex; align-items:center; gap:8px;
+    padding-right:10px; margin-right:6px;
+    border-right:1px solid rgba(255,255,255,0.18);
+  }
+  .month-nav button{
+    font-family:inherit; font-size:12.5px;
+    padding:6px 10px; border-radius:7px;
+    border:1px solid rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.06);
+    color:#fff; cursor:pointer;
+  }
+  .month-nav button:hover{ background:rgba(255,255,255,0.16); }
+  .month-label{ font-size:13px; font-weight:600; color:#fff; min-width:78px; text-align:center; }
 
   header.doc{ padding:26px 32px 18px; background:var(--navy); color:#fff; }
   header.doc .row1{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; }
@@ -95,7 +109,7 @@
 
   .cal-head{
     display:grid;
-    grid-template-columns:repeat(7,1fr);
+    grid-template-columns:repeat(5,1fr);
     margin-bottom:2px;
   }
   .cal-head div{
@@ -110,7 +124,7 @@
 
   .week-grid{
     display:grid;
-    grid-template-columns:repeat(7,1fr);
+    grid-template-columns:repeat(5,1fr);
     border-left:0.5px solid var(--line);
     border-top:0.5px solid var(--line);
     position:relative;
@@ -229,11 +243,19 @@
   footer.note[contenteditable]:focus{ text-decoration:underline dotted var(--muted); }
 
   @media print{
-    body{ background:#fff; padding:0; }
+    @page{ size:A4 portrait; margin:6mm; }
+    html, body{ background:#fff; padding:0; margin:0; }
     .toolbar{ display:none; }
-    .sheet{ border:none; border-radius:0; }
+    .sheet{ border:none; border-radius:0; max-width:none; width:max-content; }
     .add-btn{ display:none; }
     .event .del{ display:none; }
+    .event .order-btns{ display:none; }
+    .event{ cursor:default; }
+    .cal-wrap{ padding:10px 14px 14px; overflow:visible; }
+    .summary{ padding:8px 14px; }
+    header.doc{ padding:14px 14px 10px; }
+    .legend{ padding:8px 14px 10px; }
+    footer.note{ padding:6px 14px 8px; }
   }
 </style>
 </head>
@@ -243,6 +265,11 @@
   <div class="toolbar">
     <div class="hint">칸을 클릭하면 수정, 드래그하면 이동(같은 날짜 안에서는 위아래 순서 변경), Ctrl(또는 ⌘)을 누른 채 드래그하면 복사됩니다. 같은 일정이 연속된 날짜에 놓이면 하나로 합쳐 표시됩니다. <span id="save-status" style="color:#9FD6A8;"></span></div>
     <div class="actions">
+      <div class="month-nav">
+        <button id="btn-prev-month" type="button" title="전월 일정 확인/작성">◀ 전월</button>
+        <span id="month-label" class="month-label"></span>
+        <button id="btn-next-month" type="button" title="익월 일정 확인/작성">익월 ▶</button>
+      </div>
       <button id="btn-print" type="button">인쇄 / PDF 저장</button>
       <button id="btn-reset" type="button" class="primary">초기 상태로 되돌리기</button>
     </div>
@@ -325,13 +352,11 @@
   <div class="cal-wrap">
     <div class="cal-inner">
       <div class="cal-head">
-        <div class="sun">日 (Sun)</div>
         <div>月 (Mon)</div>
         <div>火 (Tue)</div>
         <div>水 (Wed)</div>
         <div>木 (Thu)</div>
         <div>金 (Fri)</div>
-        <div class="sat">土 (Sat)</div>
       </div>
       <div id="weeks-container"></div>
     </div>
@@ -369,26 +394,48 @@ const CATS = {
   holiday: { label:'휴일',  cls:'cat-holiday' }
 };
 
-const DAYS = [
-  {key:'2026-07-26',wd:0,outside:true}, {key:'2026-07-27',wd:1,outside:true}, {key:'2026-07-28',wd:2,outside:true},
-  {key:'2026-07-29',wd:3,outside:true}, {key:'2026-07-30',wd:4,outside:true}, {key:'2026-07-31',wd:5,outside:true},
-  {key:'2026-08-01',wd:6,outside:false},
-  {key:'2026-08-02',wd:0,outside:false}, {key:'2026-08-03',wd:1,outside:false}, {key:'2026-08-04',wd:2,outside:false},
-  {key:'2026-08-05',wd:3,outside:false}, {key:'2026-08-06',wd:4,outside:false}, {key:'2026-08-07',wd:5,outside:false},
-  {key:'2026-08-08',wd:6,outside:false},
-  {key:'2026-08-09',wd:0,outside:false}, {key:'2026-08-10',wd:1,outside:false}, {key:'2026-08-11',wd:2,outside:false},
-  {key:'2026-08-12',wd:3,outside:false}, {key:'2026-08-13',wd:4,outside:false}, {key:'2026-08-14',wd:5,outside:false},
-  {key:'2026-08-15',wd:6,outside:false},
-  {key:'2026-08-16',wd:0,outside:false}, {key:'2026-08-17',wd:1,outside:false}, {key:'2026-08-18',wd:2,outside:false},
-  {key:'2026-08-19',wd:3,outside:false}, {key:'2026-08-20',wd:4,outside:false}, {key:'2026-08-21',wd:5,outside:false},
-  {key:'2026-08-22',wd:6,outside:false},
-  {key:'2026-08-23',wd:0,outside:false}, {key:'2026-08-24',wd:1,outside:false}, {key:'2026-08-25',wd:2,outside:false},
-  {key:'2026-08-26',wd:3,outside:false}, {key:'2026-08-27',wd:4,outside:false}, {key:'2026-08-28',wd:5,outside:false},
-  {key:'2026-08-29',wd:6,outside:false},
-  {key:'2026-08-30',wd:0,outside:false}, {key:'2026-08-31',wd:1,outside:false}, {key:'2026-09-01',wd:2,outside:true},
-  {key:'2026-09-02',wd:3,outside:true}, {key:'2026-09-03',wd:4,outside:true}, {key:'2026-09-04',wd:5,outside:true},
-  {key:'2026-09-05',wd:6,outside:true}
-];
+function getRealTodayYM(){
+  const d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+const REAL_TODAY = getRealTodayYM();
+let currentYear = REAL_TODAY.year;
+let currentMonth = REAL_TODAY.month;
+let isAutoMonth = true;
+let lastKnownRealYM = REAL_TODAY;
+
+function buildRenderDays(year, month){
+  const firstOfMonth = new Date(year, month-1, 1);
+  const lastOfMonth = new Date(year, month, 0);
+  function mondayOf(d){
+    const dow = d.getDay();
+    const offset = (dow + 6) % 7;
+    const m = new Date(d);
+    m.setDate(m.getDate() - offset);
+    return m;
+  }
+  const start = mondayOf(firstOfMonth);
+  const lastMonday = mondayOf(lastOfMonth);
+  const end = new Date(lastMonday);
+  end.setDate(end.getDate() + 4);
+  const days = [];
+  const cur = new Date(start);
+  while(cur <= end){
+    const dow = cur.getDay();
+    if(dow >= 1 && dow <= 5){
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth()+1).padStart(2,'0');
+      const d = String(cur.getDate()).padStart(2,'0');
+      const outside = !(y === year && (cur.getMonth()+1) === month);
+      days.push({ key: y+'-'+m+'-'+d, wd: dow, outside });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return days;
+}
+
+const WEEKDAY_COUNT = 5;
+let RENDER_DAYS = buildRenderDays(currentYear, currentMonth);
 
 const TARGET_ARCH_TAGS = ['금속천정','조적','도장','석공사','골조1차','골조2차','타일'];
 const TARGET_MEP_TAGS = ['시스템','배관'];
@@ -438,19 +485,63 @@ const DEFAULT_EVENTS = [
   mkEvent('e17','g17','2026-08-31','iso','ISO','서울원 CB','이희윤')
 ];
 
-let EVENTS = JSON.parse(JSON.stringify(DEFAULT_EVENTS));
-let idCounter = DEFAULT_EVENTS.length + 1;
-let gidCounter = DEFAULT_EVENTS.length + 1;
+function getDefaultEventsFor(year, month){
+  if(year === 2026 && month === 8) return JSON.parse(JSON.stringify(DEFAULT_EVENTS));
+  return [];
+}
+
+let EVENTS = [];
+let idCounter = 1;
+let gidCounter = 1;
 let dragCtx = null;
 
 const FIREBASE_URL = 'https://qualityschedule-board-default-rtdb.firebaseio.com';
 const TEXT_FIELD_IDS = ['doc-title','meta-docnum','meta-dept','meta-date','footer-note'];
 const MANUAL_STAT_IDS = ['stat-total','stat-mh','stat-target-tomok','stat-jeokgi','stat-iso','stat-iso-support','stat-audit','stat-edu','stat-semina'];
-const DEFAULT_TEXT_VALUES = {};
+const AUGUST_2026_TEXT_VALUES = {};
 TEXT_FIELD_IDS.concat(MANUAL_STAT_IDS).forEach(id=>{
   const el = document.getElementById(id);
-  if(el) DEFAULT_TEXT_VALUES[id] = el.textContent;
+  if(el) AUGUST_2026_TEXT_VALUES[id] = el.textContent;
 });
+function blankTextFieldsFor(year, month){
+  const pad = String(month).padStart(2,'0');
+  return {
+    'doc-title': year + '年 ' + pad + '月 품질팀 품질점검 일정표',
+    'meta-docnum': AUGUST_2026_TEXT_VALUES['meta-docnum'],
+    'meta-dept': AUGUST_2026_TEXT_VALUES['meta-dept'],
+    'meta-date': year + '-' + pad + '-01',
+    'footer-note': AUGUST_2026_TEXT_VALUES['footer-note'],
+    'stat-total': '총 0개 현장 (0건)',
+    'stat-mh': '0개 현장',
+    'stat-target-tomok': '0개 현장',
+    'stat-jeokgi': '0개 현장',
+    'stat-iso': '0개 현장',
+    'stat-iso-support': '0개 현장',
+    'stat-audit': '0건',
+    'stat-edu': '0건',
+    'stat-semina': '0건'
+  };
+}
+function getDefaultTextFieldsFor(year, month){
+  if(year === 2026 && month === 8) return AUGUST_2026_TEXT_VALUES;
+  return blankTextFieldsFor(year, month);
+}
+function applyDefaultTextFields(year, month){
+  const vals = getDefaultTextFieldsFor(year, month);
+  Object.keys(vals).forEach(id=>{ const el = document.getElementById(id); if(el) el.textContent = vals[id]; });
+}
+function updateMonthLabel(){
+  const el = document.getElementById('month-label');
+  if(el) el.textContent = currentYear + '년 ' + String(currentMonth).padStart(2,'0') + '월' + (isAutoMonth ? ' · 자동' : '');
+}
+function resetLocalStateForMonth(year, month){
+  RENDER_DAYS = buildRenderDays(year, month);
+  EVENTS = getDefaultEventsFor(year, month);
+  idCounter = EVENTS.length + 1;
+  gidCounter = EVENTS.length + 1;
+  applyDefaultTextFields(year, month);
+  updateMonthLabel();
+}
 
 let saveTimer = null;
 let pendingRemoteData = null;
@@ -503,10 +594,21 @@ function applyPendingRemoteIfIdle(){
     setSaveStatus('실시간 동기화됨 · ' + new Date().toLocaleTimeString('ko-KR'));
   }
 }
+let fbApp = null;
+function ensureFirebaseApp(){
+  if(!fbApp){
+    fbApp = firebase.initializeApp({ databaseURL: FIREBASE_URL });
+  }
+}
+function currentStateKey(){
+  if(currentYear === 2026 && currentMonth === 8) return 'state';
+  return 'state-' + currentYear + '-' + String(currentMonth).padStart(2,'0');
+}
 function initRealtimeSync(){
   try{
-    firebase.initializeApp({ databaseURL: FIREBASE_URL });
-    dbRef = firebase.database().ref('state');
+    ensureFirebaseApp();
+    if(dbRef) dbRef.off();
+    dbRef = firebase.database().ref(currentStateKey());
     setSaveStatus('연결 중…');
     dbRef.on('value', (snapshot)=>{
       const data = snapshot.val();
@@ -519,10 +621,33 @@ function initRealtimeSync(){
       setSaveStatus('연결 실패 · 로컬 데이터로 시작');
       render();
     });
-    document.addEventListener('focusout', ()=> setTimeout(applyPendingRemoteIfIdle, 50));
   }catch(err){
     setSaveStatus('Firebase 연결 불가 · 로컬 데이터로 시작');
     render();
+  }
+}
+function goToMonth(year, month, opts){
+  const auto = !!(opts && opts.auto);
+  currentYear = year;
+  currentMonth = month;
+  if(!auto) isAutoMonth = false;
+  resetLocalStateForMonth(currentYear, currentMonth);
+  pendingRemoteData = null;
+  initRealtimeSync();
+}
+function shiftMonth(delta){
+  let m = currentMonth + delta;
+  let y = currentYear;
+  if(m < 1){ m = 12; y -= 1; }
+  if(m > 12){ m = 1; y += 1; }
+  goToMonth(y, m);
+}
+function checkAutoMonthRollover(){
+  const now = getRealTodayYM();
+  if(now.year === lastKnownRealYM.year && now.month === lastKnownRealYM.month) return;
+  lastKnownRealYM = now;
+  if(isAutoMonth){
+    goToMonth(now.year, now.month, { auto:true });
   }
 }
 
@@ -537,7 +662,7 @@ function addDays(key, n){
   const day = String(d.getDate()).padStart(2,'0');
   return y + '-' + m + '-' + day;
 }
-function dayIndexOf(key){ return DAYS.findIndex(d => d.key === key); }
+function dayIndexOf(key){ return RENDER_DAYS.findIndex(d => d.key === key); }
 function isValidKey(key){ return dayIndexOf(key) !== -1; }
 
 function closeAnyPicker(){ const p = document.querySelector('.picker'); if(p) p.remove(); }
@@ -580,7 +705,8 @@ function layoutWeek(weekDays){
   const dayEvents = weekDays.map(dk => EVENTS.filter(e => e.date === dk));
   const visited = new Set();
   const segments = [];
-  for(let d=0; d<7; d++){
+  const n = weekDays.length;
+  for(let d=0; d<n; d++){
     for(const e of dayEvents[d]){
       if(visited.has(e.id)) continue;
       let span = 1;
@@ -588,7 +714,7 @@ function layoutWeek(weekDays){
       let curDay = d;
       while(true){
         const nextDay = curDay + 1;
-        if(nextDay > 6) break;
+        if(nextDay >= n) break;
         const match = dayEvents[nextDay].find(ev2 => ev2.gid === e.gid && !visited.has(ev2.id));
         if(!match) break;
         ids.push(match.id);
@@ -600,7 +726,7 @@ function layoutWeek(weekDays){
       segments.push({ gid:e.gid, startDay:d, span, ids, sample:e });
     }
   }
-  segments.sort((a,b)=> a.startDay - b.startDay || b.span - a.span);
+  segments.sort((a,b)=> a.startDay - b.startDay);
   const laneEnds = [];
   segments.forEach(seg=>{
     let placed = false;
@@ -695,6 +821,9 @@ function buildEventEl(seg){
   del.className = 'del';
   del.textContent = '×';
   del.title = '삭제';
+  del.draggable = false;
+  del.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); });
+  del.addEventListener('dragstart', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); });
   del.onclick = (ev)=>{ ev.stopPropagation(); removeIds(seg.ids); renderAndSave(); };
   box.appendChild(del);
 
@@ -706,26 +835,39 @@ function buildEventEl(seg){
 
   const orderWrap = document.createElement('div');
   orderWrap.className = 'order-btns';
+  orderWrap.draggable = false;
+  orderWrap.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); });
+  orderWrap.addEventListener('dragstart', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); });
 
   const upBtn = document.createElement('button');
   upBtn.className = 'order-btn';
   upBtn.textContent = '▲';
   upBtn.title = '위로 이동';
+  upBtn.type = 'button';
+  upBtn.draggable = false;
   upBtn.disabled = posInGroup <= 0;
-  upBtn.onclick = (ev)=>{ ev.stopPropagation(); moveEventOrder(repId, 'up'); };
+  upBtn.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); });
+  upBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); moveEventOrder(repId, 'up'); });
   orderWrap.appendChild(upBtn);
 
   const downBtn = document.createElement('button');
   downBtn.className = 'order-btn';
   downBtn.textContent = '▼';
   downBtn.title = '아래로 이동';
+  downBtn.type = 'button';
+  downBtn.draggable = false;
   downBtn.disabled = posInGroup >= sameDateIndices.length - 1;
-  downBtn.onclick = (ev)=>{ ev.stopPropagation(); moveEventOrder(repId, 'down'); };
+  downBtn.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); });
+  downBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); moveEventOrder(repId, 'down'); });
   orderWrap.appendChild(downBtn);
 
   box.appendChild(orderWrap);
 
   box.addEventListener('dragstart', (dEv)=>{
+    if(dEv.target.closest('button, .order-btns')){
+      dEv.preventDefault();
+      return;
+    }
     dragCtx = { ids: seg.ids.slice(), startDate: seg.sample.date };
     box.classList.add('dragging');
     dEv.dataTransfer.effectAllowed = 'copyMove';
@@ -740,8 +882,8 @@ function render(){
   const container = document.getElementById('weeks-container');
   container.innerHTML = '';
 
-  for(let w=0; w<DAYS.length; w+=7){
-    const weekDaysInfo = DAYS.slice(w, w+7);
+  for(let w=0; w<RENDER_DAYS.length; w+=WEEKDAY_COUNT){
+    const weekDaysInfo = RENDER_DAYS.slice(w, w+WEEKDAY_COUNT);
     const weekDayKeys = weekDaysInfo.map(d=>d.key);
     const { segments, maxLanes } = layoutWeek(weekDayKeys);
 
@@ -789,9 +931,9 @@ function render(){
       dEv.preventDefault();
       const isCopy = dEv.ctrlKey || dEv.metaKey;
       const rect = weekGrid.getBoundingClientRect();
-      const colWidth = rect.width / 7;
+      const colWidth = rect.width / WEEKDAY_COUNT;
       let colIdx = Math.floor((dEv.clientX - rect.left) / colWidth);
-      colIdx = Math.max(0, Math.min(6, colIdx));
+      colIdx = Math.max(0, Math.min(WEEKDAY_COUNT - 1, colIdx));
       const targetDate = weekDayKeys[colIdx];
       weekGrid.classList.add('drop-hint');
       dayCellRefs.forEach((c,i)=> c.classList.toggle('drop-target', i===colIdx));
@@ -839,9 +981,9 @@ function render(){
       clearInsertMarks();
       if(!dragCtx) return;
       const rect = weekGrid.getBoundingClientRect();
-      const colWidth = rect.width / 7;
+      const colWidth = rect.width / WEEKDAY_COUNT;
       let colIdx = Math.floor((dEv.clientX - rect.left) / colWidth);
-      colIdx = Math.max(0, Math.min(6, colIdx));
+      colIdx = Math.max(0, Math.min(WEEKDAY_COUNT - 1, colIdx));
       const targetDate = weekDayKeys[colIdx];
       const isCopy = dEv.ctrlKey || dEv.metaKey;
 
@@ -896,14 +1038,8 @@ function render(){
 }
 
 function resetDoc(){
-  if(confirm('모든 변경사항을 취소하고 원본 일정표로 되돌리시겠습니까? (공유 저장소의 데이터도 초기화됩니다)')){
-    EVENTS = JSON.parse(JSON.stringify(DEFAULT_EVENTS));
-    idCounter = DEFAULT_EVENTS.length + 1;
-    gidCounter = DEFAULT_EVENTS.length + 1;
-    TEXT_FIELD_IDS.concat(MANUAL_STAT_IDS).forEach(id=>{
-      const el = document.getElementById(id);
-      if(el && DEFAULT_TEXT_VALUES[id] !== undefined) el.textContent = DEFAULT_TEXT_VALUES[id];
-    });
+  if(confirm(currentYear + '년 ' + String(currentMonth).padStart(2,'0') + '월 일정표를 초기 상태로 되돌리시겠습니까? (공유 저장소의 데이터도 초기화됩니다)')){
+    resetLocalStateForMonth(currentYear, currentMonth);
     renderAndSave();
   }
 }
@@ -913,9 +1049,37 @@ TEXT_FIELD_IDS.concat(MANUAL_STAT_IDS).forEach(id=>{
   if(el) el.addEventListener('input', scheduleSave);
 });
 
+function fitSheetToA4Landscape(){
+  const sheet = document.getElementById('sheet');
+  if(!sheet) return;
+  sheet.style.zoom = 1;
+  void sheet.offsetHeight;
+  const contentW = sheet.scrollWidth;
+  const contentH = sheet.scrollHeight;
+  const pageWmm = 210, pageHmm = 297, marginMm = 6;
+  const pxPerMm = 96 / 25.4;
+  const usableWpx = (pageWmm - marginMm*2) * pxPerMm;
+  const usableHpx = (pageHmm - marginMm*2) * pxPerMm;
+  const scale = Math.min(usableWpx / contentW, usableHpx / contentH, 1);
+  sheet.style.zoom = scale;
+}
+function resetSheetZoom(){
+  const sheet = document.getElementById('sheet');
+  if(sheet) sheet.style.zoom = 1;
+}
+window.addEventListener('beforeprint', fitSheetToA4Landscape);
+window.addEventListener('afterprint', resetSheetZoom);
+
 document.getElementById('btn-print').addEventListener('click', function(){ window.print(); });
 document.getElementById('btn-reset').addEventListener('click', resetDoc);
+document.getElementById('btn-prev-month').addEventListener('click', function(){ shiftMonth(-1); });
+document.getElementById('btn-next-month').addEventListener('click', function(){ shiftMonth(1); });
+document.addEventListener('focusout', ()=> setTimeout(applyPendingRemoteIfIdle, 50));
 
+setInterval(checkAutoMonthRollover, 60 * 1000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checkAutoMonthRollover(); });
+
+resetLocalStateForMonth(currentYear, currentMonth);
 initRealtimeSync();
 </script>
 </body>
