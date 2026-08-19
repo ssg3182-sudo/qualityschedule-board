@@ -28,6 +28,7 @@
     --audit-bg:#ECEEF3; --audit-fg:#33394A;
     --edu-bg:#FFF6DC; --edu-fg:#7A5B00;
     --recheck-bg:#E3F2FA; --recheck-fg:#0B4A66;
+    --initial-bg:#E9F7EF; --initial-fg:#1E6B3C;
   }
   *{box-sizing:border-box;}
   body{
@@ -211,6 +212,7 @@
   .cat-jonghap{ background:var(--jonghap-bg); color:var(--jonghap-fg); }
   .cat-special{ background:var(--special-bg); color:var(--special-fg); }
   .cat-recheck{ background:var(--recheck-bg); color:var(--recheck-fg); }
+  .cat-initial{ background:var(--initial-bg); color:var(--initial-fg); }
 
   .add-btn{
     width:calc(100% - 6px);
@@ -319,6 +321,10 @@
       <div class="label" style="color:var(--recheck-fg);">재점검</div>
       <div class="value" id="stat-recheck">0개 현장</div>
     </div>
+    <div class="stat" style="border-left-color:var(--initial-fg); background:var(--initial-bg);">
+      <div class="label" style="color:var(--initial-fg);">초기점검</div>
+      <div class="value" id="stat-initial">0개 현장</div>
+    </div>
     <div class="stat" style="border-left-color:var(--iso-fg); background:var(--iso-bg);">
       <div class="label" style="color:var(--iso-fg);">ISO 정기점검</div>
       <div class="value" id="stat-iso" contenteditable="true">5개 현장</div>
@@ -372,6 +378,7 @@
     <div class="item"><span class="chip" style="background:var(--jonghap-bg);border:1px solid var(--jonghap-fg)"></span>종합</div>
     <div class="item"><span class="chip" style="background:var(--special-bg);border:1px solid var(--special-fg)"></span>특별</div>
     <div class="item"><span class="chip" style="background:var(--recheck-bg);border:1px solid var(--recheck-fg)"></span>재점검</div>
+    <div class="item"><span class="chip" style="background:var(--initial-bg);border:1px solid var(--initial-fg)"></span>초기점검</div>
     <div class="item"><span class="chip" style="background:var(--holiday-bg);border:1px solid var(--holiday-fg)"></span>휴일</div>
   </div>
 
@@ -391,6 +398,7 @@ const CATS = {
   jonghap: { label:'종합', cls:'cat-jonghap' },
   special: { label:'특별', cls:'cat-special' },
   recheck: { label:'재점검', cls:'cat-recheck' },
+  initial: { label:'초기점검', cls:'cat-initial' },
   holiday: { label:'휴일',  cls:'cat-holiday' }
 };
 
@@ -447,18 +455,21 @@ function updateTargetStats(){
   const jonghapCount = EVENTS.filter(e => e.cat === 'jonghap').length;
   const specialCount = EVENTS.filter(e => e.cat === 'special').length;
   const recheckCount = EVENTS.filter(e => e.cat === 'recheck').length;
+  const initialCount = EVENTS.filter(e => e.cat === 'initial').length;
   const archEl = document.getElementById('stat-target-arch');
   const mepEl = document.getElementById('stat-target-mep');
   const wanjuEl = document.getElementById('stat-wanju');
   const jonghapEl = document.getElementById('stat-jonghap');
   const specialEl = document.getElementById('stat-special');
   const recheckEl = document.getElementById('stat-recheck');
+  const initialEl = document.getElementById('stat-initial');
   if(archEl) archEl.textContent = archCount + '개 현장';
   if(mepEl) mepEl.textContent = mepCount + '개 현장';
   if(wanjuEl) wanjuEl.textContent = wanjuCount + '개 현장';
   if(jonghapEl) jonghapEl.textContent = jonghapCount + '개 현장';
   if(specialEl) specialEl.textContent = specialCount + '개 현장';
   if(recheckEl) recheckEl.textContent = recheckCount + '개 현장';
+  if(initialEl) initialEl.textContent = initialCount + '개 현장';
 }
 
 function mkEvent(id, gid, date, cat, tag, site, people){
@@ -673,7 +684,7 @@ function openPicker(btn, dateKey){
   picker.className = 'picker';
   Object.keys(CATS).forEach(catKey=>{
     const c = CATS[catKey];
-    const fgVar = catKey==='mh'?'mh-fg':catKey==='target'?'target-fg':catKey==='jeokgi'?'jeokgi-fg':catKey==='iso'?'iso-fg':catKey==='semina'?'semina-fg':catKey==='wanju'?'wanju-fg':catKey==='jonghap'?'jonghap-fg':catKey==='special'?'special-fg':catKey==='recheck'?'recheck-fg':'holiday-fg';
+    const fgVar = catKey==='mh'?'mh-fg':catKey==='target'?'target-fg':catKey==='jeokgi'?'jeokgi-fg':catKey==='iso'?'iso-fg':catKey==='semina'?'semina-fg':catKey==='wanju'?'wanju-fg':catKey==='jonghap'?'jonghap-fg':catKey==='special'?'special-fg':catKey==='recheck'?'recheck-fg':catKey==='initial'?'initial-fg':'holiday-fg';
     const b = document.createElement('button');
     b.innerHTML = '<span class="swatch" style="background:var(--'+fgVar+')"></span>' + (c.label || '휴일/공지');
     b.onclick = (e)=>{ e.stopPropagation(); addEvent(dateKey, catKey); closeAnyPicker(); };
